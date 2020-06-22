@@ -33,7 +33,7 @@ typedef void(^YSKVOObservingBlock)(id observedObject, NSString * observedKey, id
 
 /// 移除观察者的所有key，当所有观察者全部移除后，isa指回原来的类
 - (void)ys_removeObserver:(NSObject *)observer;
-
+ 
 @end
 
 NS_ASSUME_NONNULL_END

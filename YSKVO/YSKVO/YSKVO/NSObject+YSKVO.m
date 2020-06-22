@@ -141,6 +141,38 @@ static Class yskvo_getSuperclass(id self, SEL _cmd) {
     }
 }
 
+/// 在setter实质调用之前，如果observer释放了，自动把观察者移除，如果没有观察者了，把isa指回原类，相当于全部移除观察者了。返回值表示是否还有观察者
+- (BOOL)yskvo_autoRemoveObserverWhenItisNil_beforeSetter{
+    // 获取所有观察者组合
+    NSMutableArray * observations = objc_getAssociatedObject(self, (__bridge const void *)(YSKVOObservations));
+    
+    // 移除观察者
+    NSMutableArray *deleteArrray = [NSMutableArray array];
+    for (YSKVOObservation * observation in observations) {
+        if (!observation.observer) {
+            [deleteArrray addObject:observation];
+        }
+    }
+    [observations removeObjectsInArray:deleteArrray];
+    
+    // 在移除所有观察者之后，让对象的isa指针重新指向它原本的类
+    if (observations && observations.count == 0) {
+        // 获取当前类的name
+        Class clazz = object_getClass(self);
+        NSString * clazzName = NSStringFromClass(clazz);
+        
+        // 如果当前类是kvo子类
+        if ([clazzName hasPrefix:YSKVOClassPrefix]) {
+            // 获取对象原本的类
+            clazz = NSClassFromString([clazzName substringFromIndex:YSKVOClassPrefix.length]);
+            // 让isa指向原本的类
+            object_setClass(self, clazz);
+        }
+    }
+    
+    return observations.count > 0;
+}
+
 /// 子类实现KVO的setter方法，在setter方法里面进行回调，注意加锁
 static void ys_kvoSetter(id self, SEL _cmd, id newValue) {
     // 根据setter获取getter，_cmd代表本方法的名称
@@ -148,6 +180,12 @@ static void ys_kvoSetter(id self, SEL _cmd, id newValue) {
     NSString * getterName = [self yskvo_getGetterName:setterName];
     if (!getterName) {
         NSLog(@"YSKVO无效，因为key没有对应的getter方法");
+        return;
+    }
+    
+    BOOL hasObserver = [self yskvo_autoRemoveObserverWhenItisNil_beforeSetter];
+    if (!hasObserver){
+        NSLog(@"YSKVO自动移除，因为observer被全部自动释放了");
         return;
     }
     

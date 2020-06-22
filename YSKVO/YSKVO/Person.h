@@ -14,8 +14,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, copy) NSString *name;
 
-@property(nonatomic, copy) NSString *book;
-
 @end
 
 NS_ASSUME_NONNULL_END
